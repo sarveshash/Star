@@ -1,4 +1,5 @@
 from telethon import TelegramClient, events
+from telethon.tl.types import DocumentAttributeAnimated
 from PIL import Image, ImageSequence
 import io
 
@@ -15,7 +16,7 @@ async def start_handler(event):
     """Handle /start command with GIF processing"""
     
     # Path to your original GIF file
-    original_gif_path = "swoobat-s.gif"  # Replace with your GIF file path
+    original_gif_path = "swoobat-s.gif"
     
     try:
         # Open the original GIF
@@ -70,9 +71,10 @@ async def start_handler(event):
             )
             output_buffer.seek(0)
             
-            # Send the processed GIF
+            # Send as animated GIF with attributes
             await event.respond(
-                file=output_buffer
+                file=output_buffer,
+                attributes=[DocumentAttributeAnimated()]
             )
             
     except FileNotFoundError:
