@@ -15,7 +15,7 @@ bot = TelegramClient('bot_session', API_ID, API_HASH).start(bot_token=BOT_TOKEN)
 
 @bot.on(events.NewMessage(pattern='/start'))
 async def start_handler(event):
-    """Handle /start command and send modified GIF with black background and resized smaller"""
+    """Handle /start command and send optimized GIF without reducing quality"""
 
     gif_url = "https://www.pkparaiso.com/imagenes/espada_escudo/sprites/animados-gigante/swoobat-s.gif"
 
@@ -28,37 +28,29 @@ async def start_handler(event):
             downloaded_file.write(response.content)
             downloaded_gif_path = downloaded_file.name
 
-        scale_factor = 4  # Resize factor: 4 means 1/4 the original size
-
         with Image.open(downloaded_gif_path) as im:
             original_width, original_height = im.size
-
-            new_width = original_width // scale_factor
-            new_height = original_height // scale_factor
 
             frames = []
             durations = []
 
-            for frame in ImageSequence.Iterator(im):
-                # Create black background with alpha channel
-                background = Image.new('RGBA', (new_width, new_height), color=(0, 0, 0, 255))
+            for i, frame in enumerate(ImageSequence.Iterator(im)):
+                # Optional: skip frames to reduce size further without reducing quality
+                # if i % 2 == 1:
+                #     continue
 
-                # Convert frame to RGBA for transparency support
+                # Create black background same size as original
+                background = Image.new('RGBA', (original_width, original_height), color=(0, 0, 0, 255))
+
                 frame_rgba = frame.convert('RGBA')
 
-                # Resize the frame to the smaller size
-                frame_resized = frame_rgba.resize((new_width, new_height), Image.Resampling.LANCZOS)
+                # Paste the frame onto black background
+                background.paste(frame_rgba, (0, 0), frame_rgba)
 
-                # Paste resized frame onto black background with transparency mask
-                background.paste(frame_resized, (0, 0), frame_resized)
-
-                # Convert to palette mode for GIF saving
                 frames.append(background.convert('P', palette=Image.ADAPTIVE))
 
-                # Save frame duration (default to 100ms)
                 durations.append(frame.info.get('duration', 100))
 
-        # Save modified GIF to temp file
         with tempfile.NamedTemporaryFile(suffix=".gif", delete=False) as modified_file:
             modified_gif_path = modified_file.name
 
@@ -68,16 +60,15 @@ async def start_handler(event):
             append_images=frames[1:],
             duration=durations,
             loop=0,
-            disposal=2  # Proper disposal for transparency
+            disposal=2,
+            optimize=True  # <-- Optimize GIF without losing quality
         )
 
-        # Send the resized GIF with black background
         await event.respond(
             file=modified_gif_path,
             attributes=[DocumentAttributeAnimated()]
         )
 
-        # Clean up temp files
         os.remove(downloaded_gif_path)
         os.remove(modified_gif_path)
 
@@ -86,6 +77,6 @@ async def start_handler(event):
     except Exception as e:
         await event.respond(f"Error processing GIF: {str(e)}")
 
-# Start the bot
 print("Bot is running...")
 bot.run_until_disconnected()
+                                         
