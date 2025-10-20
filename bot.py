@@ -2,6 +2,8 @@ from telethon import TelegramClient, events
 from telethon.tl.types import DocumentAttributeAnimated
 from PIL import Image, ImageSequence
 import io
+import tempfile
+import os
 
 # Bot credentials
 API_ID = 27715449
@@ -46,42 +48,39 @@ async def start_handler(event):
                     Image.Resampling.LANCZOS
                 )
 
-                # Calculate position to center the GIF on blue background
+                # Center the resized frame on the blue background
                 x = (bg_width - new_width) // 2
                 y = (bg_height - new_height) // 2
 
-                # Paste resized frame onto blue background
                 background.paste(resized_frame, (x, y), resized_frame)
 
-                # Convert to palette mode for GIF
+                # Convert to palette mode for saving as GIF
                 frames.append(background.convert('P', palette=Image.ADAPTIVE))
 
                 # Get frame duration (default to 100ms if not specified)
                 durations.append(frame.info.get('duration', 100))
 
-            # Save processed GIF to bytes buffer
-            output_buffer = io.BytesIO()
-            frames[0].save(
-                output_buffer,
-                format='GIF',
-                save_all=True,
-                append_images=frames[1:],
-                duration=durations,
-                loop=0,
-                optimize=False
-            )
-            output_buffer.seek(0)
+            # Save to a temporary file
+            with tempfile.NamedTemporaryFile(suffix=".gif", delete=False) as temp_file:
+                temp_filename = temp_file.name
+                frames[0].save(
+                    temp_filename,
+                    format='GIF',
+                    save_all=True,
+                    append_images=frames[1:],
+                    duration=durations,
+                    loop=0,
+                    optimize=False
+                )
 
-            # Send the GIF properly with correct MIME type and filename
+            # Send the GIF
             await event.respond(
-                file=(
-                    output_buffer,
-                    "processed.gif",   # Filename with .gif extension
-                    "image/gif"        # Correct MIME type
-                ),
-                attributes=[DocumentAttributeAnimated()],
-                force_document=False  # Try to send as visible animated GIF
+                file=temp_filename,
+                attributes=[DocumentAttributeAnimated()]
             )
+
+            # Optional: delete the temp file
+            os.remove(temp_filename)
 
     except FileNotFoundError:
         await event.respond("GIF file not found. Please check the file path.")
@@ -91,3 +90,4 @@ async def start_handler(event):
 # Start the bot
 print("Bot is running...")
 bot.run_until_disconnected()
+            
