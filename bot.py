@@ -17,19 +17,13 @@ bot = TelegramClient('bot_session', API_ID, API_HASH).start(bot_token=BOT_TOKEN)
 async def start_handler(event):
     """Handle /start command and send modified GIF with black background"""
 
-    gif_url = "https://www.pkparaiso.com/imagenes/espada_escudo/sprites/animados-gigante/swoobat-s.gif"
+    gif_url = "146-back-n.gif"
 
     try:
-        # Download the GIF
-        response = requests.get(gif_url)
-        response.raise_for_status()
-
-        with tempfile.NamedTemporaryFile(suffix=".gif", delete=False) as downloaded_file:
-            downloaded_file.write(response.content)
-            downloaded_gif_path = downloaded_file.name
+        
 
         # Open and process the GIF
-        with Image.open(downloaded_gif_path) as im:
+        with Image.open(gif_url) as im:
             original_width, original_height = im.size
 
             frames = []
