@@ -72,8 +72,7 @@ async def start_handler(event):
             
             # Send the processed GIF
             await event.respond(
-                file=output_buffer,
-                caption="Welcome! 🎮"
+                file=output_buffer
             )
             
     except FileNotFoundError:
