@@ -15,7 +15,7 @@ async def start_handler(event):
     """Handle /start command with GIF processing"""
     
     # Path to your original GIF file
-    original_gif_path = "your_gif_file.gif"  # Replace with your GIF file path
+    original_gif_path = "swoobat-s.gif"  # Replace with your GIF file path
     
     try:
         # Open the original GIF
