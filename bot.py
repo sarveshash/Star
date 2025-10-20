@@ -42,7 +42,7 @@ async def start_handler(event):
                 modified_gif_path = modified_file.name
                 frames[0].save(
                     modified_gif_path,
-                    format='GIF',
+                    format='PNG',
                     save_all=True,
                     append_images=frames[1:],
                     duration=durations,
