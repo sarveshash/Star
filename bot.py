@@ -1,7 +1,6 @@
 from telethon import TelegramClient, events
 from telethon.tl.types import DocumentAttributeAnimated
 from PIL import Image, ImageSequence
-import io
 import tempfile
 import os
 
@@ -15,52 +14,41 @@ bot = TelegramClient('bot_session', API_ID, API_HASH).start(bot_token=BOT_TOKEN)
 
 @bot.on(events.NewMessage(pattern='/start'))
 async def start_handler(event):
-    """Handle /start command with GIF processing"""
+    """Handle /start command and send modified GIF with black background"""
 
-    # Path to your original GIF file
-    original_gif_path = "swoobat-s.gif"
+    gif_path = "swoobat-s.gif"
 
     try:
-        # Open the original GIF
-        with Image.open(original_gif_path) as im:
-            # Get original dimensions
+        with Image.open(gif_path) as im:
             original_width, original_height = im.size
 
-            # Calculate new dimensions (50% smaller)
-            new_width = original_width // 2
-            new_height = original_height // 2
+            # Add padding (e.g., 100 pixels total - 50 on each side)
+            padding = 50
+            bg_width = original_width + (2 * padding)
+            bg_height = original_height + (2 * padding)
 
-            # Create blue background with new dimensions
-            bg_width = new_width + 100  # Add padding
-            bg_height = new_height + 100  # Add padding
-
-            # Process all frames
             frames = []
             durations = []
 
             for frame in ImageSequence.Iterator(im):
-                # Create blue background
-                background = Image.new('RGB', (bg_width, bg_height), color='blue')
+                # Create black background
+                background = Image.new('RGB', (bg_width, bg_height), color='black')
 
-                # Resize the frame
-                resized_frame = frame.convert('RGBA').resize(
-                    (new_width, new_height),
-                    Image.Resampling.LANCZOS
-                )
+                # Convert frame to RGBA to handle transparency
+                frame_rgba = frame.convert('RGBA')
 
-                # Center the resized frame on the blue background
-                x = (bg_width - new_width) // 2
-                y = (bg_height - new_height) // 2
+                # Center the original frame
+                x = (bg_width - original_width) // 2
+                y = (bg_height - original_height) // 2
 
-                background.paste(resized_frame, (x, y), resized_frame)
+                # Paste the frame with transparency onto the black background
+                background.paste(frame_rgba, (x, y), frame_rgba)
 
-                # Convert to palette mode for saving as GIF
+                # Convert to palette mode for GIF saving
                 frames.append(background.convert('P', palette=Image.ADAPTIVE))
+                durations.append(frame.info.get('duration', 100))  # Default 100ms
 
-                # Get frame duration (default to 100ms if not specified)
-                durations.append(frame.info.get('duration', 100))
-
-            # Save to a temporary file
+            # Save to temp file
             with tempfile.NamedTemporaryFile(suffix=".gif", delete=False) as temp_file:
                 temp_filename = temp_file.name
                 frames[0].save(
@@ -69,8 +57,7 @@ async def start_handler(event):
                     save_all=True,
                     append_images=frames[1:],
                     duration=durations,
-                    loop=0,
-                    optimize=False
+                    loop=0
                 )
 
             # Send the GIF
@@ -79,7 +66,6 @@ async def start_handler(event):
                 attributes=[DocumentAttributeAnimated()]
             )
 
-            # Optional: delete the temp file
             os.remove(temp_filename)
 
     except FileNotFoundError:
@@ -90,4 +76,4 @@ async def start_handler(event):
 # Start the bot
 print("Bot is running...")
 bot.run_until_disconnected()
-            
+                
