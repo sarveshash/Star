@@ -24,8 +24,8 @@ async def start_handler(event):
 
             # Add padding (e.g., 100 pixels total - 50 on each side)
             padding = 50
-            bg_width = original_width + (2 * padding)
-            bg_height = original_height + (2 * padding)
+            bg_width = original_width #+ (2 * padding)
+            bg_height = original_height #+ (2 * padding)
 
             frames = []
             durations = []
