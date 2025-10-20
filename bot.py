@@ -37,7 +37,7 @@ async def start_handler(event):
 
             for frame in ImageSequence.Iterator(im):
                 # Create black background
-                background = Image.new('RGB', (original_width, original_height), color='black')
+                background = Image.new('RGB', (original_width/2, original_height/2), color='black')
 
                 # Convert frame to RGBA to handle transparency
                 frame_rgba = frame.convert('RGBA')
