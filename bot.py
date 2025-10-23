@@ -1,5 +1,5 @@
 from telethon import TelegramClient, events
-from PIL import Image
+from PIL import Image, ImageSequence
 import tempfile
 import os
 
@@ -13,32 +13,39 @@ bot = TelegramClient('bot_session', API_ID, API_HASH).start(bot_token=BOT_TOKEN)
 
 @bot.on(events.NewMessage(pattern='/start'))
 async def start_handler(event):
-    """Handle /start command and send PNG with black background"""
-
-    image_path = "model [B307EB9].gif"  # Your local PNG file
+    """Handle /start command and send modified GIF with black background"""
+    image_path = "model [B307EB9].gif"  # Your local GIF file
 
     try:
         with Image.open(image_path) as im:
-            # Convert to RGBA to handle transparency
-            rgba = im.convert("RGBA")
+            # Create a black background GIF by processing each frame
+            frames = []
+            for frame in ImageSequence.Iterator(im):
+                frame = frame.convert("RGBA")
+                background = Image.new("RGBA", frame.size, (0, 0, 0, 255))
+                background.paste(frame, mask=frame)
+                frames.append(background.convert("P"))
 
-            # Create black background with same size
-            background = Image.new("RGBA", im.size, (0, 0, 0, 255))
-            background.paste(rgba, (0, 0), rgba)
+            # Save temporary GIF file
+            with tempfile.NamedTemporaryFile(suffix=".gif", delete=False) as tmp_file:
+                modified_gif_path = tmp_file.name
+                frames[0].save(
+                    modified_gif_path,
+                    save_all=True,
+                    append_images=frames[1:],
+                    loop=0,
+                    duration=im.info.get('duration', 100),
+                    disposal=2
+                )
 
-            # Save temporary PNG file
-            with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp_file:
-                modified_png_path = tmp_file.name
-                background.save(modified_png_path, format="PNG")
-
-            # Send PNG
-            await event.respond(file=modified_png_path)
+            # Send the modified GIF
+            await event.respond(file=modified_gif_path)
 
             # Clean up
-            os.remove(modified_png_path)
+            os.remove(modified_gif_path)
 
     except Exception as e:
-        await event.respond(f"⚠️ Error processing PNG: {e}")
+        await event.respond(f"⚠️ Error processing GIF: {e}")
 
 # Start the bot
 print("Bot is running...")
