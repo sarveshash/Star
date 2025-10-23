@@ -15,7 +15,7 @@ bot = TelegramClient('bot_session', API_ID, API_HASH).start(bot_token=BOT_TOKEN)
 async def start_handler(event):
     """Handle /start command and send PNG with black background"""
 
-    image_path = "frame_10_delay-0.03s.png"  # Your local PNG file
+    image_path = "model [B307EB9].gif"  # Your local PNG file
 
     try:
         with Image.open(image_path) as im:
