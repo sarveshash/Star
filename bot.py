@@ -1,27 +1,40 @@
-from PIL import Image, ImageSequence
+from PIL import Image
 import os
 
-# Input GIF path (in your repo folder)
-input_path = "giftest.gif"  # adjust if in subfolder
-output_path = "giftest_transparent.gif"
+# Folder containing your PNG sequence
+input_folder = "/root/Star/images"  # change to your folder
+output_gif = "/root/Star/final.gif"
 
 # Background color to remove (#0ECD42)
 bg_color = (14, 205, 66)
 
-# Open GIF
-im = Image.open(input_path)
+# Get list of PNG files sorted
+png_files = sorted([f for f in os.listdir(input_folder) if f.endswith(".png")])
+
 frames = []
 
-for frame in ImageSequence.Iterator(im):
-    frame = frame.convert("RGBA")
-    new_data = [
+for file in png_files:
+    path = os.path.join(input_folder, file)
+    img = Image.open(path).convert("RGBA")
+    
+    # Remove background
+    data = [
         (0, 0, 0, 0) if pixel[:3] == bg_color else pixel
-        for pixel in frame.getdata()
+        for pixel in img.getdata()
     ]
-    frame.putdata(new_data)
-    frames.append(frame)
+    img.putdata(data)
+    
+    frames.append(img)
 
-# Save new transparent GIF
-frames[0].save(output_path, save_all=True, append_images=frames[1:], loop=0, transparency=0, disposal=2)
+# Save as animated GIF
+frames[0].save(
+    output_gif,
+    save_all=True,
+    append_images=frames[1:],
+    loop=0,
+    duration=100,  # change duration per frame if needed (ms)
+    transparency=0,
+    disposal=2
+)
 
-print(f"✅ Transparent GIF saved at: {os.path.abspath(output_path)}")
+print(f"✅ GIF created at: {output_gif}")
