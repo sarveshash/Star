@@ -13,43 +13,45 @@ bot = TelegramClient('bot_session', API_ID, API_HASH).start(bot_token=BOT_TOKEN)
 
 @bot.on(events.NewMessage(pattern='/start'))
 async def start_handler(event):
-    """Handle /start command and send GIF with black background (no resolution change)"""
-    image_path = "model [B307EB9].gif"  # Your local GIF file
+    """Send GIF with black background without changing resolution or quality"""
+    gif_path = "model [B307EB9].gif"
 
     try:
-        with Image.open(image_path) as im:
+        with Image.open(gif_path) as im:
             frames = []
             durations = []
 
             for frame in ImageSequence.Iterator(im):
-                frame = frame.convert("RGBA")
+                # Convert to RGBA to handle transparency
+                frame_rgba = frame.convert("RGBA")
 
-                # Replace transparency with black background
-                background = Image.new("RGBA", frame.size, (0, 0, 0, 255))
-                background.paste(frame, mask=frame.split()[3])  # paste using alpha channel
+                # Create black background
+                bg = Image.new("RGBA", frame_rgba.size, (0, 0, 0, 255))
+                bg.paste(frame_rgba, mask=frame_rgba.split()[3])  # composite
 
-                frames.append(background.convert("P"))
-                durations.append(frame.info.get('duration', im.info.get('duration', 100)))
+                frames.append(bg)
+                durations.append(frame.info.get("duration", 100))
 
-            # Save with same resolution, duration, and looping info
-            with tempfile.NamedTemporaryFile(suffix=".gif", delete=False) as tmp_file:
-                modified_gif_path = tmp_file.name
-                frames[0].save(
-                    modified_gif_path,
-                    save_all=True,
-                    append_images=frames[1:],
-                    duration=durations,
-                    loop=im.info.get('loop', 0),
-                    disposal=2
-                )
+            # Save to temporary file (keep everything else unchanged)
+            with tempfile.NamedTemporaryFile(suffix=".gif", delete=False) as tmp:
+                out_path = tmp.name
 
-            # Send GIF as document (keeps animation)
-            await event.respond(file=modified_gif_path)
+            frames[0].save(
+                out_path,
+                save_all=True,
+                append_images=frames[1:],
+                duration=durations,
+                loop=im.info.get("loop", 0),
+                disposal=2,
+                optimize=False,
+                quality=100
+            )
 
-            os.remove(modified_gif_path)
+            await event.respond(file=out_path)
+            os.remove(out_path)
 
     except Exception as e:
-        await event.respond(f"⚠️ Error processing GIF: {e}")
+        await event.respond(f"⚠️ Error: {e}")
 
 print("Bot is running...")
 bot.run_until_disconnected()
