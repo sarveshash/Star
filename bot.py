@@ -1,8 +1,12 @@
 from PIL import Image
 import os
 
-# Folder containing your PNG sequence (directly in /root/Star/)
+# Folder containing your PNG sequence
 input_folder = "/root/Star"
+output_folder = os.path.join(input_folder, "processed")
+
+# Create output folder if it doesn't exist
+os.makedirs(output_folder, exist_ok=True)
 
 # Background color to remove (#0ECD42)
 bg_color = (14, 205, 66)
@@ -21,7 +25,7 @@ for file in png_files:
     ]
     img.putdata(new_data)
     
-    # Save with same name, overwrite original
-    img.save(path)
+    # Save to output folder with same name
+    img.save(os.path.join(output_folder, file))
 
-print("✅ Background removed from all images in", input_folder)
+print(f"✅ Background removed. Processed images saved in: {output_folder}")
