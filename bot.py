@@ -2,7 +2,7 @@ from PIL import Image
 import os
 
 # Folder containing your PNG sequence
-input_folder = "/root/Star/images"  # change to your folder
+input_folder = "/root/Star"  # change to your folder
 output_gif = "/root/Star/final.gif"
 
 # Background color to remove (#0ECD42)
