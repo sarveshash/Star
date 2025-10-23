@@ -14,7 +14,7 @@ bot = TelegramClient('bot_session', API_ID, API_HASH).start(bot_token=BOT_TOKEN)
 @bot.on(events.NewMessage(pattern='/start'))
 async def start_handler(event):
     """Handle /start command and send modified GIF with black background"""
-    image_path = "model [C5BB805].gif"  # Your local GIF file
+    image_path = "model [D379EFD].gif"  # Your local GIF file
 
     try:
         with Image.open(image_path) as im:
