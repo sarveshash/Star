@@ -68,8 +68,7 @@ if __name__ == "__main__":
     print("✓ Pokemon background with adjustable dark spread created!")
     print("✓ Saved as: pokemon_background_clean.png")
     print(f"  Size: {background.size}")
-    print("
-  To adjust dark area size:")
+    print("To adjust dark area size:")
     print("  - dark_spread=0.4 (smaller dark area)")
     print("  - dark_spread=0.5 (normal)")
     print("  - dark_spread=0.6 (wider dark area)")
