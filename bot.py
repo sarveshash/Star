@@ -1,4 +1,4 @@
-from PIL import Image
+from PIL import Image,ImageDraw
 import numpy as np
 
 def create_pokemon_gradient_background(width=640, height=360):
