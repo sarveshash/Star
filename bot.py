@@ -1,22 +1,23 @@
-from PIL import Image, ImageDraw
+from PIL import Image
 import numpy as np
 
 def create_pokemon_gradient_background(width=640, height=360):
     """
-    Create gradient background matching Pokemon character selection screen.
+    Create smooth gradient background matching Pokemon character selection screen.
+    No dots - just clean gradient.
     """
     # Create new RGB image
     img = Image.new('RGB', (width, height))
     pixels = img.load()
     
-    # COLOR CODES - Extract from Pokemon screen
+    # COLOR CODES
     top_color = np.array([9, 48, 87], dtype=float)      # RGB(9, 48, 87) - Medium blue
     mid_color = np.array([1, 3, 28], dtype=float)       # RGB(1, 3, 28) - Dark navy
     bottom_color = np.array([28, 66, 104], dtype=float) # RGB(28, 66, 104) - Lighter blue
     
-    mid_point = height * 0.5  # Gradient middle point at 50% height
+    mid_point = height * 0.5  # Gradient middle at 50% height
     
-    # Create vertical gradient
+    # Create smooth vertical gradient
     for y in range(height):
         if y < mid_point:
             # Top to middle transition
@@ -35,6 +36,19 @@ def create_pokemon_gradient_background(width=640, height=360):
     
     return img
 
+
+# MAIN EXECUTION
+if __name__ == "__main__":
+    # Create clean gradient background (no dots)
+    background = create_pokemon_gradient_background(640, 360)
+    
+    # Save file
+    background.save('pokemon_background_clean.png')
+    
+    print("✓ Clean Pokemon background created!")
+    print("✓ Saved as: pokemon_background_clean.png")
+    print(f"  Size: {background.size}")
+    print("  No dots - just smooth gradient")
 
 def add_star_dots(img, density=0.004, seed=42):
     """
