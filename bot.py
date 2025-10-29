@@ -1,31 +1,82 @@
-from PIL import Image
-import os
+from PIL import Image, ImageDraw
+import numpy as np
 
-# Folder containing your PNG sequence
-input_folder = "/root/Star"
-output_folder = os.path.join(input_folder, "processed")
-
-# Create output folder if it doesn't exist
-os.makedirs(output_folder, exist_ok=True)
-
-# Background color to remove (#0ECD42)
-bg_color = (14, 205, 66)
-
-# Get list of PNG files
-png_files = sorted([f for f in os.listdir(input_folder) if f.endswith(".png")])
-
-for file in png_files:
-    path = os.path.join(input_folder, file)
-    img = Image.open(path).convert("RGBA")
+def create_pokemon_gradient_background(width=640, height=360):
+    """
+    Create gradient background matching Pokemon character selection screen.
+    """
+    # Create new RGB image
+    img = Image.new('RGB', (width, height))
+    pixels = img.load()
     
-    # Remove background
-    new_data = [
-        (0, 0, 0, 0) if pixel[:3] == bg_color else pixel
-        for pixel in img.getdata()
-    ]
-    img.putdata(new_data)
+    # COLOR CODES - Extract from Pokemon screen
+    top_color = np.array([9, 48, 87], dtype=float)      # RGB(9, 48, 87) - Medium blue
+    mid_color = np.array([1, 3, 28], dtype=float)       # RGB(1, 3, 28) - Dark navy
+    bottom_color = np.array([28, 66, 104], dtype=float) # RGB(28, 66, 104) - Lighter blue
     
-    # Save to output folder with same name
-    img.save(os.path.join(output_folder, file))
+    mid_point = height * 0.5  # Gradient middle point at 50% height
+    
+    # Create vertical gradient
+    for y in range(height):
+        if y < mid_point:
+            # Top to middle transition
+            t = y / mid_point
+            color = top_color * (1 - t) + mid_color * t
+        else:
+            # Middle to bottom transition
+            t = (y - mid_point) / (height - mid_point)
+            color = mid_color * (1 - t) + bottom_color * t
+        
+        r, g, b = int(round(color[0])), int(round(color[1])), int(round(color[2]))
+        
+        # Fill entire row with calculated color
+        for x in range(width):
+            pixels[x, y] = (r, g, b)
+    
+    return img
 
-print(f"✅ Background removed. Processed images saved in: {output_folder}")
+
+def add_star_dots(img, density=0.004, seed=42):
+    """
+    Add star dot pattern overlay to background.
+    """
+    width, height = img.size
+    draw = ImageDraw.Draw(img)
+    
+    np.random.seed(seed)
+    num_dots = int(width * height * density)
+    
+    for _ in range(num_dots):
+        x = np.random.randint(0, width)
+        y = np.random.randint(0, height)
+        
+        # Dot size (mostly 1px, some 2px)
+        size = np.random.choice([1, 2], p=[0.75, 0.25])
+        
+        # Dot brightness (gray/white)
+        brightness = np.random.randint(90, 140)
+        color = (brightness, brightness, brightness)
+        
+        if size == 1:
+            draw.point((x, y), fill=color)
+        else:
+            draw.ellipse([x-1, y-1, x+1, y+1], fill=color)
+    
+    return img
+
+
+# MAIN EXECUTION
+if __name__ == "__main__":
+    # Create 640x360 background with gradient
+    background = create_pokemon_gradient_background(640, 360)
+    
+    # Add star pattern
+    background = add_star_dots(background, density=0.004)
+    
+    # Save in current directory on VPS
+    background.save('pokemon_background.png')
+    
+    print("✓ Pokemon background created successfully!")
+    print("✓ Saved as: pokemon_background.png")
+    print(f"  Size: {background.size}")
+    print(f"  Colors: Top RGB(9,48,87) → Mid RGB(1,3,28) → Bottom RGB(28,66,104)")
