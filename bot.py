@@ -68,7 +68,6 @@ if __name__ == "__main__":
     print("✓ Adjustable Pokemon background created!")
     print("✓ Saved as: pokemon_background_clean.png")
     print(f"  Size: {background.size}")
-    print("
-  To adjust:")
+    print("To adjust:")
     print("  - dark_position: 0.4 (higher) | 0.5 (center) | 0.6 (lower)")
     print("  - dark_intensity: 0.8 (lighter) | 1.0 (normal) | 1.2 (darker)")
