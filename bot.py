@@ -59,7 +59,7 @@ if __name__ == "__main__":
     background = create_pokemon_gradient_background(
         width=640, 
         height=360,
-        dark_spread=0.07  # Try 0.6, 0.65, or 0.7 for wider dark area
+        dark_spread=0.04  # Try 0.6, 0.65, or 0.7 for wider dark area
     )
     
     # Save file
