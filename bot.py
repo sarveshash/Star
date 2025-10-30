@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# pokemon_bot.py - Single file: Telethon + Real Download Progress + Upload
+# pokemon_bot.py - Single file: Telethon + Real 8GB Download Progress + Upload
 
 import asyncio
 import aiohttp
@@ -13,7 +13,7 @@ API_HASH = "dd3da7c5045f7679ff1f0ed0c82404e0"
 BOT_TOKEN = "8474337967:AAH_mbpp4z1nOTDGyoJrM5r0Rii-b_TUcvA"
 
 # === CONFIG ===
-DOWNLOAD_URL = "https://example.com/your-8gb-file.iso"  # CHANGE THIS!
+DOWNLOAD_URL = "https://ash-speed.hetzner.com/8GB.bin"  # ← REAL 8GB FILE!
 CHUNK_SIZE = 1024 * 1024  # 1 MB
 TEMP_FILE = "downloaded_file.tmp"
 
@@ -87,7 +87,7 @@ async def start_handler(event):
         await bot.send_file(
             event.chat_id,
             TEMP_FILE,
-            caption="Here is your file!",
+            caption="Here is your 8 GB file! (Pokémon data pack?)",
             reply_to=event.id
         )
         await msg.delete()
@@ -134,6 +134,5 @@ def format_bytes(b):
 
 # === Run Bot ===
 if __name__ == "__main__":
-    print("Bot is running... Use /start to download.")
-    bot.run_until_disconnected()            # Inside dark region - stays dark
-        
+    print("Bot is running... Use /start to download 8GB file.")
+    bot.run_until_disconnected()
