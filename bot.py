@@ -136,41 +136,4 @@ def format_bytes(b):
 if __name__ == "__main__":
     print("Bot is running... Use /start to download.")
     bot.run_until_disconnected()            # Inside dark region - stays dark
-            color = mid_color
-        else:
-            # Dark end to bottom
-            remaining = height - dark_end
-            t = (y - dark_end) / remaining if remaining > 0 else 0
-            color = mid_color * (1 - t) + bottom_color * t
         
-        r, g, b = int(round(color[0])), int(round(color[1])), int(round(color[2]))
-        
-        # Fill entire row with calculated color
-        for x in range(width):
-            pixels[x, y] = (r, g, b)
-    
-    return img
-
-
-# MAIN EXECUTION - Adjust dark area spread here!
-if __name__ == "__main__":
-    # ADJUST THIS VALUE:
-    # dark_spread: 0.3 = narrow dark area, 0.5 = normal, 0.6 = wider, 0.7 = very wide
-    
-    background = create_pokemon_gradient_background(
-        width=640, 
-        height=360,
-        dark_spread=0.04  # Try 0.6, 0.65, or 0.7 for wider dark area
-    )
-    
-    # Save file
-    background.save('pokemon_background_clean.png')
-    
-    print("✓ Pokemon background with adjustable dark spread created!")
-    print("✓ Saved as: pokemon_background_clean.png")
-    print(f"  Size: {background.size}")
-    print("To adjust dark area size:")
-    print("  - dark_spread=0.4 (smaller dark area)")
-    print("  - dark_spread=0.5 (normal)")
-    print("  - dark_spread=0.6 (wider dark area)")
-    print("  - dark_spread=0.7 (very wide dark area)")
