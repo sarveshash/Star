@@ -11,71 +11,70 @@ def scrape_serebii_basic(url):
 
     data = {}
 
-    dex_table = soup.find("table", class_="dextable")
+    # Find the dex table that actually has "Classification" in it (unique to main Pokémon table)
+    dex_table = None
+    for table in soup.find_all("table", class_="dextable"):
+        if table.find(string="Classification"):
+            dex_table = table
+            break
+
     if not dex_table:
-        raise ValueError("Main table not found")
+        raise ValueError("Could not find main dex table")
 
-    rows = dex_table.find_all("tr")
+    all_rows = dex_table.find_all("tr")
 
-    # --- Identify header row & data row dynamically ---
-    header_labels = [td.get_text(strip=True).lower() for td in rows[0].find_all("td")]
-    info_cells = rows[1].find_all("td", class_="fooinfo")
+    # --------- NAME / ID / GENDER / TYPE section -------------
+    top_data_row = None
+    for i, row in enumerate(all_rows):
+        if row.find(string="Name"):
+            top_data_row = all_rows[i + 1]  # the next row has actual data
+            break
 
-    header_map = dict(zip(header_labels, info_cells))
+    if not top_data_row:
+        raise ValueError("Main info row not found")
+
+    top_cells = top_data_row.find_all("td")
 
     # Name
-    name_cell = header_map.get("name")
-    data["name"] = name_cell.get_text(strip=True) if name_cell else None
+    name_cell = top_cells[0]
+    data["name"] = name_cell.get_text(strip=True)
 
-    # ID (Kanto)
-    id_cell = header_map.get("no.")
+    # Kanto ID
+    id_table = top_cells[2].find("table")
     data["kanto_id"] = None
-    if id_cell:
-        id_table = id_cell.find("table")
-        if id_table:
-            kanto = id_table.find("b", string="Kanto")
-            if kanto:
-                data["kanto_id"] = kanto.find_next("td").get_text(strip=True)
+    if id_table:
+        kanto_label = id_table.find("b", string="Kanto")
+        if kanto_label:
+            data["kanto_id"] = kanto_label.find_next("td").get_text(strip=True)
 
-    # Gender ratio
-    gender_cell = header_map.get("gender ratio")
+    # Gender Ratio
     data["gender_ratio"] = None
-    if gender_cell:
-        gender_table = gender_cell.find("table")
-        if gender_table:
-            rows_g = gender_table.find_all("tr")
-            male_ratio = female_ratio = None
-            if len(rows_g) >= 2:
-                male_ratio = rows_g[0].find_all("td")[1].get_text(strip=True)
-                female_ratio = rows_g[1].find_all("td")[1].get_text(strip=True)
-            data["gender_ratio"] = {"male": male_ratio, "female": female_ratio}
+    gender_table = top_cells[3].find("table")
+    if gender_table:
+        rows = gender_table.find_all("tr")
+        if len(rows) >= 2:
+            male = rows[0].find_all("td")[1].get_text(strip=True)
+            female = rows[1].find_all("td")[1].get_text(strip=True)
+            data["gender_ratio"] = {"male": male, "female": female}
 
-    # Type(s)
-    type_cell = header_map.get("type")
-    types = []
-    if type_cell:
-        type_links = type_cell.find_all("a", href=True)
-        for a in type_links:
-            if "/type/" in a["href"]:
-                t = a["href"].split("/")[-1].replace(".shtml", "")
-                types.append(t)
+    # Types
+    type_links = top_data_row.find_all("a", href=True)
+    types = [a["href"].split("/")[-1].replace(".shtml", "") for a in type_links if "/type/" in a["href"]]
     if len(types) == 1:
         types.append(None)
     data["type1"], data["type2"] = (types + [None, None])[:2]
 
-    # --- Second section: classification etc. ---
-    # Find the next header row containing “Classification”
-    class_row = dex_table.find("td", string="Classification")
-    if class_row:
-        # The next <tr> contains values
-        value_row = class_row.find_parent("tr").find_next_sibling("tr")
-        vals = [td.get_text(" ", strip=True) for td in value_row.find_all("td", class_="fooinfo")]
-        if len(vals) >= 5:
+    # -------- CLASSIFICATION / HEIGHT / WEIGHT etc ----------
+    for i, row in enumerate(all_rows):
+        if row.find(string="Classification"):
+            values_row = all_rows[i + 1]
+            vals = [td.get_text(" ", strip=True) for td in values_row.find_all("td", class_="fooinfo")]
             data["classification"] = vals[0]
             data["height"] = vals[1]
             data["weight"] = vals[2]
             data["capture_rate"] = vals[3]
             data["base_egg_steps"] = vals[4]
+            break
 
     return data
 
