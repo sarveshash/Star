@@ -11,55 +11,71 @@ def scrape_serebii_basic(url):
 
     data = {}
 
-    # Locate the main dex info table (the one you shared)
     dex_table = soup.find("table", class_="dextable")
     if not dex_table:
-        raise ValueError("Main table not found.")
+        raise ValueError("Main table not found")
 
     rows = dex_table.find_all("tr")
 
-    # Row 2: contains main info — name, no., gender ratio, type
-    main_info_row = rows[1]
-    info_cells = main_info_row.find_all("td", class_="fooinfo")
+    # --- Identify header row & data row dynamically ---
+    header_labels = [td.get_text(strip=True).lower() for td in rows[0].find_all("td")]
+    info_cells = rows[1].find_all("td", class_="fooinfo")
+
+    header_map = dict(zip(header_labels, info_cells))
 
     # Name
-    data["name"] = info_cells[0].get_text(strip=True)
+    name_cell = header_map.get("name")
+    data["name"] = name_cell.get_text(strip=True) if name_cell else None
 
-    # Kanto ID (inside the nested table)
-    id_table = info_cells[2].find("table")
-    if id_table:
-        kanto_row = id_table.find("b", string="Kanto")
-        if kanto_row:
-            data["kanto_id"] = kanto_row.find_next("td").get_text(strip=True)
-        else:
-            data["kanto_id"] = None
+    # ID (Kanto)
+    id_cell = header_map.get("no.")
+    data["kanto_id"] = None
+    if id_cell:
+        id_table = id_cell.find("table")
+        if id_table:
+            kanto = id_table.find("b", string="Kanto")
+            if kanto:
+                data["kanto_id"] = kanto.find_next("td").get_text(strip=True)
 
-    # Gender Ratio
-    gender_table = info_cells[3].find("table")
-    if gender_table:
-        genders = gender_table.find_all("tr")
-        male_ratio = genders[0].find_all("td")[1].get_text(strip=True)
-        female_ratio = genders[1].find_all("td")[1].get_text(strip=True)
-        data["gender_ratio"] = {"male": male_ratio, "female": female_ratio}
-    else:
-        data["gender_ratio"] = None
+    # Gender ratio
+    gender_cell = header_map.get("gender ratio")
+    data["gender_ratio"] = None
+    if gender_cell:
+        gender_table = gender_cell.find("table")
+        if gender_table:
+            rows_g = gender_table.find_all("tr")
+            male_ratio = female_ratio = None
+            if len(rows_g) >= 2:
+                male_ratio = rows_g[0].find_all("td")[1].get_text(strip=True)
+                female_ratio = rows_g[1].find_all("td")[1].get_text(strip=True)
+            data["gender_ratio"] = {"male": male_ratio, "female": female_ratio}
 
     # Type(s)
-    type_links = main_info_row.find_all("a", href=True)
-    types = [a["href"].split("/")[-1].replace(".shtml", "") for a in type_links if "type" in a["href"]]
+    type_cell = header_map.get("type")
+    types = []
+    if type_cell:
+        type_links = type_cell.find_all("a", href=True)
+        for a in type_links:
+            if "/type/" in a["href"]:
+                t = a["href"].split("/")[-1].replace(".shtml", "")
+                types.append(t)
     if len(types) == 1:
         types.append(None)
-    data["type1"], data["type2"] = types[:2]
+    data["type1"], data["type2"] = (types + [None, None])[:2]
 
-    # Row 4: classification, height, weight, capture rate, egg steps
-    value_row = rows[4]
-    values = [td.get_text(" ", strip=True) for td in value_row.find_all("td", class_="fooinfo")]
-
-    data["classification"] = values[0]
-    data["height"] = values[1]
-    data["weight"] = values[2]
-    data["capture_rate"] = values[3]
-    data["base_egg_steps"] = values[4]
+    # --- Second section: classification etc. ---
+    # Find the next header row containing “Classification”
+    class_row = dex_table.find("td", string="Classification")
+    if class_row:
+        # The next <tr> contains values
+        value_row = class_row.find_parent("tr").find_next_sibling("tr")
+        vals = [td.get_text(" ", strip=True) for td in value_row.find_all("td", class_="fooinfo")]
+        if len(vals) >= 5:
+            data["classification"] = vals[0]
+            data["height"] = vals[1]
+            data["weight"] = vals[2]
+            data["capture_rate"] = vals[3]
+            data["base_egg_steps"] = vals[4]
 
     return data
 
