@@ -2,78 +2,69 @@ import requests
 from bs4 import BeautifulSoup
 
 URL = "https://www.serebii.net/pokedex-sm/025.shtml"
-HEADERS = {"User-Agent": "Mozilla/5.0 (compatible)"}
+HEADERS = {"User-Agent": "Mozilla/5.0"}
 
-def scrape_pokemon(url):
-    resp = requests.get(url, headers=HEADERS)
-    resp.raise_for_status()
-    soup = BeautifulSoup(resp.text, "html.parser")
+def scrape_serebii_basic(url):
+    res = requests.get(url, headers=HEADERS)
+    res.raise_for_status()
+    soup = BeautifulSoup(res.text, "html.parser")
 
     data = {}
 
-    # Name & No.
-    # Assuming the “name box” is something like <div class="pokedex-title">Pikachu</div>
-    title = soup.select_one("div#content h1")  # example selector
-    if title:
-        data["name"] = title.get_text(strip=True)
-    # Kanto No: maybe inside a table with “No.” label
-    no_label = soup.find(string="No.")
-    if no_label:
-        data["kanto_no"] = no_label.find_next().get_text(strip=True)
+    # Locate the main dex info table (the one you shared)
+    dex_table = soup.find("table", class_="dextable")
+    if not dex_table:
+        raise ValueError("Main table not found.")
 
-    # Gender ratio & Type(s)
-    # Example: a table row with “Gender Ratio” and then something like “♂ 50% ♀ 50%”
-    gender_label = soup.find(string="Gender Ratio")
-    if gender_label:
-        data["gender_ratio"] = gender_label.find_next().get_text(strip=True)
-    types = soup.select("td a[href*='/type/']")
-    # types might list one or two
-    if types:
-        data["type1"] = types[0].get_text(strip=True)
-        data["type2"] = types[1].get_text(strip=True) if len(types) > 1 else None
+    rows = dex_table.find_all("tr")
 
-    # Classification, Height, Weight, Capture Rate, Base Egg Steps
-    for field in ["Classification", "Height", "Weight", "Capture Rate", "Base Egg Steps"]:
-        lbl = soup.find(string=field)
-        if lbl:
-            data[field.lower().replace(" ", "_")] = lbl.find_next().get_text(strip=True)
+    # Row 2: contains main info — name, no., gender ratio, type
+    main_info_row = rows[1]
+    info_cells = main_info_row.find_all("td", class_="fooinfo")
 
-    # Abilities + description
-    data["abilities"] = []
-    abil_section = soup.find(string="Ability")
-    if abil_section:
-        # Example cells for each ability
-        abil_cells = abil_section.find_next("table").select("tr")
-        for row in abil_cells:
-            # parse ability name and description from row
-            cols = row.select("td")
-            if len(cols) >= 2:
-                name = cols[0].get_text(strip=True)
-                desc = cols[1].get_text(strip=True)
-                data["abilities"].append({"name": name, "description": desc})
+    # Name
+    data["name"] = info_cells[0].get_text(strip=True)
 
-    # Exp growth + Base happiness
-    exp_lbl = soup.find(string="EXP Growth")
-    if exp_lbl:
-        data["exp_growth"] = exp_lbl.find_next().get_text(strip=True)
+    # Kanto ID (inside the nested table)
+    id_table = info_cells[2].find("table")
+    if id_table:
+        kanto_row = id_table.find("b", string="Kanto")
+        if kanto_row:
+            data["kanto_id"] = kanto_row.find_next("td").get_text(strip=True)
+        else:
+            data["kanto_id"] = None
 
-    happ_lbl = soup.find(string="Base Happiness")
-    if happ_lbl:
-        data["base_happiness"] = happ_lbl.find_next().get_text(strip=True)
+    # Gender Ratio
+    gender_table = info_cells[3].find("table")
+    if gender_table:
+        genders = gender_table.find_all("tr")
+        male_ratio = genders[0].find_all("td")[1].get_text(strip=True)
+        female_ratio = genders[1].find_all("td")[1].get_text(strip=True)
+        data["gender_ratio"] = {"male": male_ratio, "female": female_ratio}
+    else:
+        data["gender_ratio"] = None
 
-    # Effort values
-    ev_lbl = soup.find(string="Effort Values")
-    if ev_lbl:
-        data["effort_values"] = ev_lbl.find_next().get_text(strip=True)
+    # Type(s)
+    type_links = main_info_row.find_all("a", href=True)
+    types = [a["href"].split("/")[-1].replace(".shtml", "") for a in type_links if "type" in a["href"]]
+    if len(types) == 1:
+        types.append(None)
+    data["type1"], data["type2"] = types[:2]
 
-    # Egg groups
-    egg_lbl = soup.find(string="Egg Group(s)")
-    if egg_lbl:
-        data["egg_groups"] = egg_lbl.find_next().get_text(strip=True)
+    # Row 4: classification, height, weight, capture rate, egg steps
+    value_row = rows[4]
+    values = [td.get_text(" ", strip=True) for td in value_row.find_all("td", class_="fooinfo")]
+
+    data["classification"] = values[0]
+    data["height"] = values[1]
+    data["weight"] = values[2]
+    data["capture_rate"] = values[3]
+    data["base_egg_steps"] = values[4]
 
     return data
 
+
 if __name__ == "__main__":
-    result = scrape_pokemon(URL)
-    import pprint
-    pprint.pprint(result)
+    result = scrape_serebii_basic(URL)
+    from pprint import pprint
+    pprint(result)
