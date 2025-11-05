@@ -1,4 +1,4 @@
-import requests
+    import requests
 from bs4 import BeautifulSoup
 import re
 
@@ -23,49 +23,49 @@ def scrape_serebii_basic(url):
         "base_egg_steps": None,
     }
 
-    # --- locate the correct dex table ---
+    # --- Find the main table (contains "Classification") ---
     dex_table = None
     for table in soup.find_all("table", class_="dextable"):
         if table.find(string=re.compile("Classification")):
             dex_table = table
             break
     if not dex_table:
-        print("❌ Main dex table not found.")
+        print("❌ Main table not found.")
         return data
 
     rows = dex_table.find_all("tr")
 
-    # --- Find Name row header ---
-    name_header_row = None
+    # --- Locate row containing Name headers ---
+    header_row_idx = None
     for i, row in enumerate(rows):
         if row.find(string=re.compile(r"\bName\b", re.I)):
-            name_header_row = i
+            header_row_idx = i
             break
-    if name_header_row is None:
-        print("❌ Couldn't find 'Name' header row.")
+
+    if header_row_idx is None:
+        print("❌ Could not locate header row.")
         return data
 
-    # Next row contains actual data
-    info_row = rows[name_header_row + 1]
+    info_row = rows[header_row_idx + 1]
     info_cells = info_row.find_all("td")
 
-    # Name
+    # --- Name ---
     if len(info_cells) >= 1:
-        name = info_cells[0].get_text(strip=True)
-        if name:
-            data["name"] = name
+        data["name"] = info_cells[0].get_text(strip=True)
 
-    # ID (look for the nested table with “Kanto”)
+    # --- Kanto ID ---
     if len(info_cells) >= 3:
         id_table = info_cells[2].find("table")
         if id_table:
-            kanto_label = id_table.find("b", string=re.compile("Kanto", re.I))
-            if kanto_label:
-                id_val = kanto_label.find_next("td")
-                if id_val:
-                    data["kanto_id"] = id_val.get_text(strip=True)
+            for tr in id_table.find_all("tr"):
+                b_tag = tr.find("b")
+                if b_tag and "Kanto" in b_tag.get_text():
+                    td = tr.find_all("td")
+                    if len(td) >= 2:
+                        data["kanto_id"] = td[1].get_text(strip=True)
+                        break
 
-    # Gender Ratio
+    # --- Gender Ratio ---
     if len(info_cells) >= 4:
         gender_table = info_cells[3].find("table")
         if gender_table:
@@ -75,16 +75,16 @@ def scrape_serebii_basic(url):
                 female = tr_list[1].find_all("td")[1].get_text(strip=True)
                 data["gender_ratio"] = {"male": male, "female": female}
 
-    # Type(s)
+    # --- Type(s) ---
     type_cell = info_row.find("td", class_="cen")
     if type_cell:
-        type_links = type_cell.find_all("a", href=True)
-        types = [a["href"].split("/")[-1].replace(".shtml", "") for a in type_links if "/type/" in a["href"]]
+        type_imgs = type_cell.find_all("img", alt=True)
+        types = [img["alt"].replace("-type", "").strip().lower() for img in type_imgs]
         if len(types) == 1:
             types.append(None)
         data["type1"], data["type2"] = (types + [None, None])[:2]
 
-    # --- Second part: Classification / Height / Weight / Capture Rate / Egg Steps ---
+    # --- Classification / Height / Weight / Capture / Egg Steps ---
     for i, row in enumerate(rows):
         if row.find(string=re.compile("Classification")):
             vals_row = rows[i + 1]
