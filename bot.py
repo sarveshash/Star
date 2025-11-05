@@ -23,7 +23,7 @@ def scrape_serebii_basic(url):
         "base_egg_steps": None,
     }
 
-    # --- Find the main table (contains "Classification") ---
+    # --- Find correct table ---
     dex_table = None
     for table in soup.find_all("table", class_="dextable"):
         if table.find(string=re.compile("Classification")):
@@ -35,13 +35,12 @@ def scrape_serebii_basic(url):
 
     rows = dex_table.find_all("tr")
 
-    # --- Locate row containing Name headers ---
+    # --- Find header with "Name" ---
     header_row_idx = None
     for i, row in enumerate(rows):
         if row.find(string=re.compile(r"\bName\b", re.I)):
             header_row_idx = i
             break
-
     if header_row_idx is None:
         print("❌ Could not locate header row.")
         return data
@@ -55,25 +54,34 @@ def scrape_serebii_basic(url):
 
     # --- Kanto ID ---
     if len(info_cells) >= 3:
-        id_table = info_cells[2].find("table")
-        if id_table:
-            for tr in id_table.find_all("tr"):
-                b_tag = tr.find("b")
-                if b_tag and "Kanto" in b_tag.get_text():
-                    td = tr.find_all("td")
-                    if len(td) >= 2:
-                        data["kanto_id"] = td[1].get_text(strip=True)
-                        break
+        no_cell = info_cells[2]
+        full_text = no_cell.get_text(" ", strip=True)
+        match = re.search(r"Kanto:\s*(#[0-9\-]+)", full_text)
+        if match:
+            data["kanto_id"] = match.group(1)
+        else:
+            # fallback: old nested table method
+            id_table = no_cell.find("table")
+            if id_table:
+                for tr in id_table.find_all("tr"):
+                    b_tag = tr.find("b")
+                    if b_tag and "Kanto" in b_tag.get_text():
+                        tds = tr.find_all("td")
+                        if len(tds) >= 2:
+                            data["kanto_id"] = tds[1].get_text(strip=True)
+                            break
 
     # --- Gender Ratio ---
     if len(info_cells) >= 4:
-        gender_table = info_cells[3].find("table")
-        if gender_table:
-            tr_list = gender_table.find_all("tr")
-            if len(tr_list) >= 2:
-                male = tr_list[0].find_all("td")[1].get_text(strip=True)
-                female = tr_list[1].find_all("td")[1].get_text(strip=True)
-                data["gender_ratio"] = {"male": male, "female": female}
+        gender_cell = info_cells[3]
+        gtext = gender_cell.get_text(" ", strip=True)
+        male_match = re.search(r"Male.*?([0-9]+%)", gtext)
+        female_match = re.search(r"Female.*?([0-9]+%)", gtext)
+        if male_match or female_match:
+            data["gender_ratio"] = {
+                "male": male_match.group(1) if male_match else None,
+                "female": female_match.group(1) if female_match else None
+            }
 
     # --- Type(s) ---
     type_cell = info_row.find("td", class_="cen")
@@ -84,7 +92,7 @@ def scrape_serebii_basic(url):
             types.append(None)
         data["type1"], data["type2"] = (types + [None, None])[:2]
 
-    # --- Classification / Height / Weight / Capture / Egg Steps ---
+    # --- Classification / Height / Weight / Capture Rate / Egg Steps ---
     for i, row in enumerate(rows):
         if row.find(string=re.compile("Classification")):
             vals_row = rows[i + 1]
