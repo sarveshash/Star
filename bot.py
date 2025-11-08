@@ -1,131 +1,48 @@
-import requests
-from bs4 import BeautifulSoup
-import re
+from pyrogram import Client, filters
+import os
+from PIL import Image
 
-URL = "https://www.serebii.net/pokedex-sm/025.shtml"
-HEADERS = {"User-Agent": "Mozilla/5.0"}
+# --- YOUR CREDENTIALS (for testing only) ---
+API_ID = 27715449
+API_HASH = "dd3da7c5045f7679ff1f0ed0c82404e0"
+BOT_TOKEN = "8397651199:AAGPUiPNlr4AkgGoQK6BWAeyK4uCYL0knJ4"
+# -------------------------------------------
 
-def scrape_serebii_basic(url):
-    res = requests.get(url, headers=HEADERS)
-    res.raise_for_status()
-    soup = BeautifulSoup(res.text, "html.parser")
+# Initialize bot client
+bot = Client("sticker_to_file_bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 
-    data = {
-        "name": None,
-        "kanto_id": None,
-        "gender_ratio": None,
-        "type1": None,
-        "type2": None,
-        "classification": None,
-        "height": None,
-        "weight": None,
-        "capture_rate": None,
-        "base_egg_steps": None,
-    }
+# Ensure folder exists
+os.makedirs("downloads", exist_ok=True)
 
-    # --- Find correct table ---
-    dex_table = None
-    for table in soup.find_all("table", class_="dextable"):
-        if table.find(string=re.compile("Classification")):
-            dex_table = table
-            break
-    if not dex_table:
-        print("❌ Main table not found.")
-        return data
+@bot.on_message(filters.sticker)
+async def sticker_to_file(client, message):
+    sticker = message.sticker
+    msg = await message.reply_text("🔄 Converting sticker...")
 
-    rows = dex_table.find_all("tr")
+    # Download sticker
+    file_path = await client.download_media(sticker, file_name="downloads/")
 
-    # --- Find header with "Name" ---
-    header_row_idx = None
-    for i, row in enumerate(rows):
-        if row.find(string=re.compile(r"\bName\b", re.I)):
-            header_row_idx = i
-            break
-    if header_row_idx is None:
-        print("❌ Could not locate header row.")
-        return data
+    if sticker.is_animated:
+        # Animated sticker (.tgs)
+        new_name = file_path.replace(".tgs", ".json")
+        os.rename(file_path, new_name)
+        file_path = new_name
+        caption = "🎞 Animated sticker (.tgs as .json)"
+    elif sticker.is_video:
+        # Video sticker (.webm)
+        caption = "🎬 Video sticker (.webm)"
+    else:
+        # Static sticker (.webp → .png)
+        img = Image.open(file_path).convert("RGBA")
+        new_name = file_path.replace(".webp", ".png")
+        img.save(new_name, "PNG")
+        os.remove(file_path)
+        file_path = new_name
+        caption = "🖼 Static sticker (.png)"
 
-    info_row = rows[header_row_idx + 1]
-    info_cells = info_row.find_all("td")
+    await msg.edit_text("✅ Done! Sending file...")
+    await message.reply_document(file_path, caption=caption)
+    os.remove(file_path)
 
-    # --- Name ---
-    if len(info_cells) >= 1:
-        data["name"] = info_cells[0].get_text(strip=True)
-
-    # --- Kanto ID ---
-    if len(info_cells) >= 3:
-        no_cell = info_cells[2]
-        full_text = no_cell.get_text(" ", strip=True)
-        match = re.search(r"Kanto:\s*(#[0-9\-]+)", full_text)
-        if match:
-            data["kanto_id"] = match.group(1)
-        else:
-            # fallback: old nested table method
-            id_table = no_cell.find("table")
-            if id_table:
-                for tr in id_table.find_all("tr"):
-                    b_tag = tr.find("b")
-                    if b_tag and "Kanto" in b_tag.get_text():
-                        tds = tr.find_all("td")
-                        if len(tds) >= 2:
-                            data["kanto_id"] = tds[1].get_text(strip=True)
-                            break
-
-    # --- Gender Ratio ---
-    if len(info_cells) >= 4:
-        gender_cell = info_cells[3]
-        gtext = gender_cell.get_text(" ", strip=True)
-        male_match = re.search(r"Male.*?([0-9]+%)", gtext)
-        female_match = re.search(r"Female.*?([0-9]+%)", gtext)
-        if male_match or female_match:
-            data["gender_ratio"] = {
-                "male": male_match.group(1) if male_match else None,
-                "female": female_match.group(1) if female_match else None
-            }
-
-    # --- Type(s) ---
-    type_cell = info_row.find("td", class_="cen")
-    if type_cell:
-        type_imgs = type_cell.find_all("img", alt=True)
-        types = [img["alt"].replace("-type", "").strip().lower() for img in type_imgs]
-        if len(types) == 1:
-            types.append(None)
-        data["type1"], data["type2"] = (types + [None, None])[:2]
-
-    # --- Classification / Height / Weight / Capture Rate / Egg Steps ---
-    for i, row in enumerate(rows):
-        if row.find(string=re.compile("Classification")):
-            vals_row = rows[i + 1]
-            vals = [td.get_text(" ", strip=True) for td in vals_row.find_all("td", class_="fooinfo")]
-            if len(vals) >= 5:
-                data["classification"] = vals[0]
-
-                # height
-                imperial, metric = None, None
-                for part in vals[1].split():
-                    if "'" in part or '"' in part:
-                        imperial = part.strip()
-                    elif "m" in part:
-                        metric = part.strip()
-                data["height"] = {"imperial": imperial, "metric": metric}
-
-                # weight
-                lbs, kg = None, None
-                for part in vals[2].split():
-                    if "lbs" in part:
-                        lbs = part.replace("lbs", "").strip()
-                    elif "kg" in part:
-                        kg = part.replace("kg", "").strip()
-                data["weight"] = {"lbs": lbs, "kg": kg}
-
-                data["capture_rate"] = vals[3]
-                data["base_egg_steps"] = vals[4]
-            break
-
-    return data
-
-
-if __name__ == "__main__":
-    result = scrape_serebii_basic(URL)
-    from pprint import pprint
-    pprint(result)
+print("🤖 Sticker to File Bot is running...")
+bot.run()
