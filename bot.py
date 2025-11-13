@@ -1,19 +1,24 @@
 import requests
 
-def download_file(url: str, local_filename: str):
-    try:
-        # streaming to avoid loading entire file into memory if large
-        with requests.get(url, stream=True) as r:
-            r.raise_for_status()  # will raise HTTPError for bad responses
-            with open(local_filename, 'wb') as f:
-                for chunk in r.iter_content(chunk_size=8192):
-                    if chunk:  # filter out keep-alive new chunks
-                        f.write(chunk)
-        print(f"Downloaded successfully: {local_filename}")
-    except Exception as e:
-        print(f"Failed to download. Error: {e}")
+url = "https://files.catbox.moe/491yle.mp4"
+filename = "491yle.mp4"
 
-if __name__ == "__main__":
-    url = "https://files.catbox.moe/491yle.mp4"
-    local_filename = "491yle.mp4"
-    download_file(url, local_filename)
+headers = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                  "AppleWebKit/537.36 (KHTML, like Gecko) "
+                  "Chrome/130.0 Safari/537.36"
+}
+
+try:
+    with requests.get(url, headers=headers, stream=True) as r:
+        r.raise_for_status()
+        
+        with open(filename, "wb") as f:
+            for chunk in r.iter_content(chunk_size=8192):
+                if chunk:
+                    f.write(chunk)
+
+    print("Download success:", filename)
+
+except Exception as e:
+    print("Download failed:", e)
