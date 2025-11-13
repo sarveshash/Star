@@ -1,31 +1,19 @@
-from telethon import TelegramClient, events
-from telethon.tl.custom.button import Button
+import requests
 
-API_ID = 27715449
-API_HASH = "dd3da7c5045f7679ff1f0ed0c82404e0"
-BOT_TOKEN = "8397651199:AAGPUiPNlr4AkgGoQK6BWAeyK4uCYL0knJ4"
-
-bot = TelegramClient('app', API_ID, API_HASH).start(bot_token=BOT_TOKEN)
-
-VIDEO_URL = "https://files.catbox.moe/491yle.mp4"
-
-@bot.on(events.NewMessage(pattern='/start'))
-async def start(event):
+def download_file(url: str, local_filename: str):
     try:
-        await bot.send_file(
-            event.chat_id,
-            file=VIDEO_URL,
-            force_document=False,
-            allow_cache=False,
-            buttons=[[Button.inline("Next", b"next")]]
-        )
+        # streaming to avoid loading entire file into memory if large
+        with requests.get(url, stream=True) as r:
+            r.raise_for_status()  # will raise HTTPError for bad responses
+            with open(local_filename, 'wb') as f:
+                for chunk in r.iter_content(chunk_size=8192):
+                    if chunk:  # filter out keep-alive new chunks
+                        f.write(chunk)
+        print(f"Downloaded successfully: {local_filename}")
     except Exception as e:
-        print("SEND ERROR:", e)
-        await event.reply("⚠️ Failed to send media")
+        print(f"Failed to download. Error: {e}")
 
-@bot.on(events.CallbackQuery(pattern=b"next"))
-async def next_button(event):
-    await event.answer("Button working!", alert=True)
-
-print("Bot is running...")
-bot.run_until_disconnected()
+if __name__ == "__main__":
+    url = "https://files.catbox.moe/491yle.mp4"
+    local_filename = "491yle.mp4"
+    download_file(url, local_filename)
